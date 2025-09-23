@@ -8,17 +8,14 @@ import java.util.*;
 
 import static gitlet.Utils.*;
 
-// TODO: any imports you need here
 
 /** Represents a gitlet repository.
- *  TODO: It's a good idea to give a description here of what else this Class
  *  does at a high level.
  *
- *  @author TODO
+ *  @author
  */
 public class Repository implements Serializable {
     /**
-     * TODO: add instance variables here.
      *
      * List all instance variables of the Repository class here with a useful
      * comment above them describing what that variable represents and how that
@@ -41,7 +38,8 @@ public class Repository implements Serializable {
     public void init() {
         boolean gitletDirExists = GITLET_DIR.exists();
         if (gitletDirExists) {
-            System.out.println("A gitlet version-control system already exists in the current directory.");
+            System.out.println
+                    ("A gitlet version-control system already exists in the current directory.");
             return;
         }
         //创建.gitlet目录及其子目录
@@ -80,6 +78,7 @@ public class Repository implements Serializable {
             if (stagingRemovals.contains(fileName)) {
                 stagingRemovals.remove(fileName);
                 writeObject(REMOVAL_FILE, stagingRemovals);
+                return;
             }
         }
         //读取文件内容并计算SHA-1哈希值作为blob ID
@@ -93,7 +92,7 @@ public class Repository implements Serializable {
             stagingArea = new HashMap<>();
         }
         //保存快照,将文件名和对应的blob ID存入暂存区
-        File blobFile = new File (BLOBS_DIR, blobUID);
+        File blobFile = new File(BLOBS_DIR, blobUID);
         //写入内容
         if (!blobFile.exists()) {
             writeContents(blobFile, fileContent);
@@ -103,7 +102,6 @@ public class Repository implements Serializable {
         //将更新后的暂存区序列化并写回INDEX_FILE
         writeObject(INDEX_FILE, stagingArea);
     }
-    /* TODO: fill in the rest of this class. */
     public void commit(String message) {
         //检查提交信息是否为空
         if (message == null || message.isEmpty()) {
@@ -183,7 +181,8 @@ public class Repository implements Serializable {
         HashMap<String, String> currentFiles = currentCommit.getBlobs();
         //检查是否在暂存区和是否被跟踪
         boolean isStaged = stagingAdditions.containsKey(fileName);
-        boolean isTracked = currentFiles.containsKey(fileName);//如果既不在暂存区也不被跟踪，打印错误信息
+        boolean isTracked = currentFiles.containsKey(fileName);
+        //如果既不在暂存区也不被跟踪，打印错误信息
         if (!isStaged && !isTracked) {
             System.out.println("No reason to remove the file.");
             return;
@@ -216,7 +215,8 @@ public class Repository implements Serializable {
             Commit currentCommit = readObject(commitFile, Commit.class);
             System.out.println("===");
             System.out.println("commit " + currentCommitId);
-            SimpleDateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.US);
+            SimpleDateFormat dateFormat = new SimpleDateFormat
+                    ("EEE MMM d HH:mm:ss yyyy Z", Locale.US);
             System.out.println("Date: " + dateFormat.format(currentCommit.getTimestamp()));
             System.out.println(currentCommit.getMessage());
             System.out.println();
@@ -236,7 +236,8 @@ public class Repository implements Serializable {
 
             System.out.println("===");
             System.out.println("commit " + commitId);
-            SimpleDateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.US);
+            SimpleDateFormat dateFormat = new SimpleDateFormat
+                    ("EEE MMM d HH:mm:ss yyyy Z", Locale.US);
             System.out.println("Date: " + dateFormat.format(commit.getTimestamp()));
             System.out.println(commit.getMessage());
             System.out.println();
@@ -316,10 +317,8 @@ public class Repository implements Serializable {
         for (String fileName : trackedFiles.keySet()) {
             File file = new File(CWD, fileName);
             String trackedFileID = trackedFiles.get(fileName);
-
             boolean isStagedForAddition = stagingAdditions.containsKey(fileName);
             boolean isMarkedForRemoval = stagingRemovals.contains(fileName);
-
             //文件被追踪，但是工作区中已经删除，并且没有被标记为待删除
             if (!file.exists() && !isMarkedForRemoval) {
                 modifiedFiles.add(fileName + "(deleted)");
@@ -372,20 +371,16 @@ public class Repository implements Serializable {
     public void checkout(String... args) {
         //检查参数长度
         //checkout --[file name]
-        if (args.length == 2 && args[0].equals("--")) {
+        if (args.length == 2 && args[0].equals("--"))
             checkoutFileFromHead(args[1]);
-        }
         //checkout [commit id] -- [file name]
-        else if (args.length == 3 && args[1].equals("--")) {
+        else if (args.length == 3 && args[1].equals("--"))
             checkoutFileFromCommit(args[0], args[2]);
-        }
         //checkout [branch name]
-        else if (args.length == 1) {
+        else if (args.length == 1)
             checkoutBranch(args[0]);
-        }
-        else {
+        else
             System.out.println("Incorrect operands.");
-        }
     }
     private void checkoutFileFromHead(String fileName) {
         //获取当前HEAD指向的提交ID
@@ -516,7 +511,8 @@ public class Repository implements Serializable {
             if (!isTracked && !isStagedForAddition) {
                 //并且这个文件会被切换分支的操作覆盖
                 if (targetCommit.getBlobs().containsKey(fileName)) {
-                    System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+                    System.out.println
+                            ("There is an untracked file in the way; delete it, or add and commit it first.");
                     System.exit(0);
                     //直接退出程序
                 }
