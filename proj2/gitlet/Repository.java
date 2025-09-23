@@ -217,6 +217,7 @@ public class Repository implements Serializable {
             System.out.println("===");
             System.out.println("commit " + currentCommitId);
             SimpleDateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.US);
+            System.out.println("Date: " + dateFormat.format(currentCommit.getTimestamp()));
             System.out.println(currentCommit.getMessage());
             System.out.println();
             //移动到父提交
@@ -236,6 +237,7 @@ public class Repository implements Serializable {
             System.out.println("===");
             System.out.println("commit " + commitId);
             SimpleDateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.US);
+            System.out.println("Date: " + dateFormat.format(commit.getTimestamp()));
             System.out.println(commit.getMessage());
             System.out.println();
         }
@@ -307,7 +309,7 @@ public class Repository implements Serializable {
         }
         System.out.println();
         //打印被修改但未暂存的文件
-        System.out.println("=== Tracked Files ===");
+        System.out.println("=== Modification Not Staged For Commit ===");
         //使用TreeSet对文件名进行排序
         TreeSet<String> modifiedFiles = new TreeSet<>();
         //检查被跟踪的文件是否被修改
