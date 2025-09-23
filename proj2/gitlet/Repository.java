@@ -309,7 +309,7 @@ public class Repository implements Serializable {
         }
         System.out.println();
         //打印被修改但未暂存的文件
-        System.out.println("=== Modification Not Staged For Commit ===");
+        System.out.println("=== Modifications Not Staged For Commit ===");
         //使用TreeSet对文件名进行排序
         TreeSet<String> modifiedFiles = new TreeSet<>();
         //检查被跟踪的文件是否被修改
