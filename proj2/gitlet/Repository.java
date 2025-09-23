@@ -81,9 +81,24 @@ public class Repository implements Serializable {
                 return;
             }
         }
+        //如果文件内容与上一次提奥相同，返回
         //读取文件内容并计算SHA-1哈希值作为blob ID
         byte[] fileContent  = readContents(fileToAdd);
         String blobUID = sha1(fileContent);
+        //获取当前HEAD指向的提交ID
+        String headContent = readContentsAsString(HEAD_FILE);
+        String currentBranchPath = headContent.split(" ")[1];
+        File currentBranchFile = new File(GITLET_DIR, currentBranchPath);
+        String headCommitId = readContentsAsString(currentBranchFile);
+        Commit headCommit = readObject(new File(COMMITS_DIR, headCommitId), Commit.class);
+        HashMap<String, String> headBlobs = headCommit.getBlobs();
+        //检查文件是否被当前提交跟踪，且内容未改变
+        if (headBlobs.containsKey(fileName)) {
+            String headBlobId = headBlobs.get(fileName);
+            if (headBlobId.equals(blobUID)) {
+                return;
+            }
+        }
         //加载暂存区，存在就将其反序列化为一个HashMap.不存在就创建一个新的
         HashMap<String, String> stagingArea;
         if (INDEX_FILE.exists()) {
@@ -108,15 +123,16 @@ public class Repository implements Serializable {
             System.out.println("Please enter a commit message");
             return;
         }
-        //加载暂存区
-        if (!INDEX_FILE.exists()) {
+        //加载待移除区和暂存区
+        if (!REMOVAL_FILE.exists() && !INDEX_FILE.exists()) {
             System.out.println("No changes added to the commit.");
             return;
         }
         //反序列化读取暂存区内容
         HashMap<String, String> stagingArea = readObject(INDEX_FILE, HashMap.class);
+        HashMap<String, String> removalArea = readObject(REMOVAL_FILE, HashMap.class);
         //检查暂存区是否为空
-        if (stagingArea.isEmpty()) {
+        if (stagingArea.isEmpty() && removalArea.isEmpty()) {
             System.out.println("No changes added to the commit.");
             return;
         }
