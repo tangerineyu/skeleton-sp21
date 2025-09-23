@@ -46,6 +46,17 @@ public class Repository implements Serializable {
         GITLET_DIR.mkdirs();
         COMMITS_DIR.mkdirs();
         BLOBS_DIR.mkdirs();
+        // 创建并初始化空的暂存区文件 (Staging Area)
+        // 这个文件用来存放 `add` 命令添加的文件 (文件名 -> blob哈希值)
+        File indexFile = new File(GITLET_DIR, "index");
+        HashMap<String, String> stagingAddition = new HashMap<>();
+        writeObject(indexFile, stagingAddition);
+
+        // 这个文件用来存放 `rm` 命令要删除的文件名
+        File removalFile = new File(GITLET_DIR, "removal");
+        HashSet<String> stagingRemoval = new HashSet<>();
+        writeObject(removalFile, stagingRemoval);
+
         Commit initialCommit = new Commit("initial commit", null, new Date(0), new HashMap<>());
         //序列化初始提交对象并计算其SHA-1哈希值作为提交ID
         byte[] serializedCommit = serialize(initialCommit);
