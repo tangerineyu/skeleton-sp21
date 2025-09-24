@@ -141,9 +141,8 @@ public class Repository implements Serializable {
         }
         //反序列化读取暂存区内容
         HashMap<String, String> stagingArea = readObject(INDEX_FILE, HashMap.class);
-        HashSet<String> removalArea = readObject(REMOVAL_FILE, HashSet.class);
         //检查暂存区是否为空
-        if (stagingArea.isEmpty() && removalArea.isEmpty()) {
+        if (stagingArea.isEmpty()) {
             System.out.println("No changes added to the commit.");
             return;
         }
