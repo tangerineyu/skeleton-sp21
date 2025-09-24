@@ -141,8 +141,9 @@ public class Repository implements Serializable {
         }
         //反序列化读取暂存区内容
         HashMap<String, String> stagingArea = readObject(INDEX_FILE, HashMap.class);
+        HashSet<String> stagingRemovals = readObject(REMOVAL_FILE, HashSet.class);
         //检查暂存区是否为空
-        if (stagingArea.isEmpty()) {
+        if (stagingArea.isEmpty() && stagingRemovals.isEmpty()) {
             System.out.println("No changes added to the commit.");
             return;
         }
@@ -162,10 +163,6 @@ public class Repository implements Serializable {
             newCommitBlobs.put(fileName, blobUID);
         }
         //处理删除暂存区
-        HashSet<String> stagingRemovals = new HashSet<>();
-        if (REMOVAL_FILE.exists()) {
-            stagingRemovals = readObject(REMOVAL_FILE, HashSet.class);
-        }
         for (String fileName : stagingRemovals) {
             newCommitBlobs.remove(fileName);
         }
@@ -181,8 +178,8 @@ public class Repository implements Serializable {
         //将commitId写入当前分支文件，更新HEAD指向
         writeContents(currentBranchFile, newCommitId);
         //清空暂存区
-        INDEX_FILE.delete();
-        REMOVAL_FILE.delete();
+        writeObject(INDEX_FILE, new HashMap<String, String>());
+        writeObject(REMOVAL_FILE, new HashSet<String>());
     }
     public void rm(String fileName) {
         HashMap<String, String> stagingAdditions;
