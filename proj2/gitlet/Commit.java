@@ -1,11 +1,12 @@
 package gitlet;
 
 
+import java.util.ArrayList;
 import java.util.Date;
-import java.io.File;
 //import java.gitlet.Utils.*;
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.List;
 
 /** Represents a gitlet commit object.
  *  does at a high level.
@@ -23,13 +24,18 @@ public class Commit implements Serializable {
     /** The message of this Commit. */
     private String message;
     private Date timestamp;
-    private String parent;
+    private List<String> parents;
     private HashMap<String, String> blobs;
-    public Commit(String message, String parent, Date timestamp, HashMap<String, String> blobs) {
+    public Commit(String message, List<String> parents, Date timestamp, HashMap<String, String> blobs) {
         this.message = message;
         this.timestamp = timestamp;
-        this.parent = parent;
+        this.parents = parents;
         this.blobs = blobs;
+    }
+    public Commit(String message, String parent, Date timestamp, HashMap<String, String> blobs) {
+        this(message, (parent == null) ? new ArrayList<>() : List.of(parent),
+                timestamp,
+                blobs);
     }
 
     public Date getTimestamp() {
@@ -39,8 +45,14 @@ public class Commit implements Serializable {
     public String getMessage() {
         return message;
     }
+    public List<String> getParents() {
+        return parents;
+    }
     public String getParent() {
-        return parent;
+        if (parents == null || parents.isEmpty()) {
+            return null;
+        }
+        return parents.get(0);
     }
     public HashMap<String, String> getBlobs() {
         return blobs;

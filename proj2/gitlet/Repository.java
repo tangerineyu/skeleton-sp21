@@ -57,7 +57,7 @@ public class Repository implements Serializable {
         HashSet<String> stagingRemoval = new HashSet<>();
         writeObject(removalFile, stagingRemoval);
 
-        Commit initialCommit = new Commit("initial commit", null, new Date(0), new HashMap<>());
+        Commit initialCommit = new Commit("initial commit", (String)null, new Date(0), new HashMap<String, String>());
         //序列化初始提交对象并计算其SHA-1哈希值作为提交ID
         byte[] serializedCommit = serialize(initialCommit);
         String commitUID = sha1(serializedCommit);
@@ -620,6 +620,135 @@ public class Repository implements Serializable {
         if (REMOVAL_FILE.exists()) {
             REMOVAL_FILE.delete();
         }
+    }
+    //辅助变量，标记是否发生冲突
+    private boolean conflictOccurred = false;
+    public void merge(String branchName) {
+        //检查暂存区和待删除区是否为空
+        if (!INDEX_FILE.exists() && !REMOVAL_FILE.exists()) {
+
+        }
+        else {
+            System.out.println("You have uncommitted changes.");
+            return;
+        }
+        //检查分支是否存在
+        File givenBranchFile = new File(HEADS_DIR, branchName);
+        if (!givenBranchFile.exists()) {
+            System.out.println("A branch with that name does not exist.");
+            return;
+        }
+        //检查是否是当前所处分支
+        String currentBranchName = getCurrentBranchName();
+        if (currentBranchName.equals(branchName)) {
+            System.out.println("Cannot merge a branch with itself.");
+            return;
+        }
+        //寻找分割点
+        String currentCommitId = getCurrentCommitId();
+        String givenCommitId = readContentsAsString(givenBranchFile);
+        String splitPointId = findSplitPoint(currentCommitId, givenCommitId);
+        //处理特殊情况
+        if (splitPointId.equals(givenCommitId)) {
+            System.out.println("Given branch is an ancestor of the current branch.");
+            return;
+        }
+        if (splitPointId.equals(currentCommitId)) {
+            //直接切换到目标分支
+            checkoutBranch(branchName);
+            System.out.println("Current branch fast-forwarded.");
+            return;
+        }
+        //splitPoint, currentCommit, givenCommit开始合并
+        Commit splitPointCommit = readObject(new File(COMMITS_DIR, splitPointId), Commit.class);
+        Commit currentCommit = readObject(new File(COMMITS_DIR, currentCommitId), Commit.class);
+        Commit givenCommit = readObject(new File(COMMITS_DIR, givenCommitId), Commit.class);
+        //获取三个提交的文件快照
+        Set<String> allFiles = new HashSet<>();
+        allFiles.addAll(splitPointCommit.getBlobs().keySet());
+        allFiles.addAll(currentCommit.getBlobs().keySet());
+        allFiles.addAll(givenCommit.getBlobs().keySet());
+        //遍历所有相关文件，进行合并
+        for (String file : allFiles) {
+            String splitId = splitPointCommit.getBlobs().get(file);
+            String currentId = currentCommit.getBlobs().get(file);
+            String givenId = givenCommit.getBlobs().get(file);
+
+            boolean isCurrentModified = isModified(splitId, currentId);
+            boolean isGivenModified = isModified(splitId, givenId);
+            // 情况1：  两边都没有修改，或者修改相同
+            if ((!isCurrentModified && !isGivenModified) || (currentId != null && currentId.equals(givenId))) {
+                continue;
+            }
+            // 情况2： 只有当前分支修改
+            else if (isCurrentModified && !isGivenModified) {
+                continue;
+            }
+            // 情况3： 只有给定分支修改
+            else if (!isCurrentModified && isGivenModified) {
+                //检出给定分支的文件
+                if (givenId != null) {
+                    checkoutFileFromCommit(givenCommitId, file);
+                    //将文件添加到暂存区
+                    add(file);
+                } else {
+                    //文件在给定分支被删除
+                    File fileToDelete = new File(CWD, file);
+                    restrictedDelete(fileToDelete);
+                    //将文件标记为待删除
+                    rm(file);
+                }
+            }
+            // 情况4： 两边都修改，且修改不同，发生冲突
+            else {
+                //分为几种情况，1   两边都修改了但是内容不同   2    一边修改，一边删除   3   两边都新增，但是内容不同
+                if ((currentId != null && !currentId.equals(givenId)) || (givenId != null && !givenId.equals(currentId))) {
+                    handleConflict(file, currentId, givenId);
+                }
+            }
+        }
+    }
+    private String findSplitPoint(String commitAId, String commitBId) {
+        //使用广度优先搜索（BFS）找到两个提交的最近共同祖先（分支点）
+        HashSet<String> ancestorsA = new HashSet<>();
+        String currentId = commitAId;
+        while (currentId != null) {
+            ancestorsA.add(currentId);
+            Commit c = readObject(new File(COMMITS_DIR, currentId), Commit.class);
+            currentId = c.getParent();
+        }
+        //从commitB开始向上遍历，找到第一个在ancestorsA中出现的提交ID
+        currentId = commitBId;
+        while (currentId != null) {
+            if (ancestorsA.contains(currentId)) {
+                return currentId;
+            }
+            Commit c = readObject(new File(COMMITS_DIR, currentId), Commit.class);
+            currentId = c.getParent();
+        }
+        return null;
+    }
+    //辅助方法，检查两个blob ID是否不同
+    private boolean isModified(String id1, String id2) {
+        if (id1 == null) {
+            return id2 != null;
+        }
+        return !id1.equals(id2);
+    }
+    private void handleConflict(String fileName, String currentId, String givenId) {
+        conflictOccurred = true;
+        byte []currentContent = (currentId == null) ? new byte[0] : readContents(new File(BLOBS_DIR, currentId));
+        byte []givenContent = (givenId == null) ? new byte[0] : readContents(new File(BLOBS_DIR, givenId));
+        String mergedContent = "<<<<<<< HEAD\n" +
+                new String(currentContent) +
+                "=======\n" +
+                new String(givenContent) +
+                ">>>>>>>\n";
+        File fileInCWD = new File(CWD, fileName);
+        writeContents(fileInCWD, mergedContent);
+        //将合并后的文件添加到暂存区
+        add(fileName);
+
     }
 
 

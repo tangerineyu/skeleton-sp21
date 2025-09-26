@@ -93,6 +93,14 @@ public class Main {
                 String commitId = args[1];
                 repo.reset(commitId);
                 break;
+            case "merge":
+                if (args.length < 2) {
+                    System.out.println("Please enter a command");
+                    break;
+                }
+                String branchToMerge = args[1];
+                repo.merge(branchToMerge);
+                break;
             default :
                 System.out.println(
                         "No command with that name exits."
