@@ -16,7 +16,7 @@ Usage: python3 tester.py OPTIONS TEST.in ...
        --keep         Keep test directories
        --progdir=DIR  Directory or JAR files containing gitlet application
        --timeout=SEC  Default number of seconds allowed to each execution
-                      of gitlet.
+                      of gitlet.q
        --src=SRC      Use SRC instead of "src" as the subdirectory containing
                       files referenced by + and =.
        --debug        Allows you to step through commands one by one and

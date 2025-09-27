@@ -238,6 +238,13 @@ public class Repository implements Serializable {
             Commit currentCommit = readObject(commitFile, Commit.class);
             System.out.println("===");
             System.out.println("commit " + currentCommitId);
+            List<String> parents = currentCommit.getParents();
+            //处理合并提交
+            if (parents != null && parents.size() > 1) {
+                String parent1ShortId = parents.get(0).substring(0, 7);
+                String parent2ShortId = parents.get(1).substring(0, 7);
+                System.out.println("Merge: " + parent1ShortId + " " + parent2ShortId);
+            }
             SimpleDateFormat dateFormat = new SimpleDateFormat
                     ("EEE MMM d HH:mm:ss yyyy Z", Locale.US);
             System.out.println("Date: " + dateFormat.format(currentCommit.getTimestamp()));
@@ -484,10 +491,11 @@ public class Repository implements Serializable {
         writeContents(HEAD_FILE, newHeadContent);
         //清空暂存区
         if (INDEX_FILE.exists()) {
-            INDEX_FILE.delete();
+            //使用空的HashMap覆盖原有的暂存区文件
+            writeObject(INDEX_FILE, new HashMap<String, String>());
         }
         if (REMOVAL_FILE.exists()) {
-            REMOVAL_FILE.delete();
+            writeObject(REMOVAL_FILE, new HashSet<String>());
         }
     }
     //辅助方法
@@ -707,6 +715,65 @@ public class Repository implements Serializable {
                 }
             }
         }
+        //完成合并，提交结果
+        if (conflictOccurred) {
+            System.out.println("Encountered a merge conflict.");
+        }
+        else {
+            String message = "Merged " + branchName + " into " + getCurrentBranchName()+ ".";
+            List<String> parents = new ArrayList<>();
+            parents.add(currentCommitId);
+            parents.add(givenCommitId);
+
+            makeCommit(message, parents);
+        }
+    }
+    //辅助函数，特殊的commit
+    private void makeCommit(String message, List<String> parents) {
+        //加载暂存区检测是否为空
+        HashMap<String, String> stagingAdditions = new HashMap<>();
+        if ( INDEX_FILE.exists() ) {
+            stagingAdditions = readObject(INDEX_FILE, HashMap.class);
+        }
+        HashSet<String> stagingRemovals = new HashSet<>();
+        if ( REMOVAL_FILE.exists() ) {
+            stagingRemovals = readObject(REMOVAL_FILE, HashSet.class);
+        }
+        if ( stagingAdditions.isEmpty() && stagingRemovals.isEmpty() ) {
+            System.out.println("No changes added to the commit.");
+            return;
+        }
+
+        // --- 构建新 Commit 的文件清单 ---
+        // 父 commit 是 parents 列表中的第一个
+        String firstParentId = parents.get(0);
+        Commit parentCommit = readObject(new File(COMMITS_DIR, firstParentId), Commit.class);
+        HashMap<String, String> newCommitBlobs = new HashMap<>(parentCommit.getBlobs());
+
+        // 应用暂存区的添加和删除
+        newCommitBlobs.putAll(stagingAdditions);
+        for (String fileToRemove : stagingRemovals) {
+            newCommitBlobs.remove(fileToRemove);
+        }
+
+        // --- 创建并保存新 Commit 对象 ---
+        // 使用传入的 message 和 parents 列表
+        Commit newCommit = new Commit(message, parents, new Date(), newCommitBlobs);
+        byte[] serializedCommit = serialize(newCommit);
+        String newCommitId = sha1(serializedCommit);
+        File newCommitFile = new File(COMMITS_DIR, newCommitId);
+        writeObject(newCommitFile, newCommit);
+
+        // --- 更新分支指针 ---
+        String currentBranchName = getCurrentBranchName();
+        File currentBranchFile = new File(HEADS_DIR, currentBranchName);
+        writeContents(currentBranchFile, newCommitId);
+
+        // --- 清空暂存区 ---
+        INDEX_FILE.delete();
+        if ( REMOVAL_FILE.exists() ) {
+            REMOVAL_FILE.delete();
+        }
     }
     private String findSplitPoint(String commitAId, String commitBId) {
         //使用广度优先搜索（BFS）找到两个提交的最近共同祖先（分支点）
@@ -750,6 +817,4 @@ public class Repository implements Serializable {
         add(fileName);
 
     }
-
-
 }
